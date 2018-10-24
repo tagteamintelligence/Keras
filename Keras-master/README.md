@@ -1,2 +1,0 @@
-# Keras
-Deep Learning Practice
