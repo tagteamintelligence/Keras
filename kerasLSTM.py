@@ -16,7 +16,10 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
 
 import numpy as np
+from numpy import newaxis
 import pandas as pd
+from matplotlib import pyplot as plt
+
 n=100
 def load_data(n):
 	df = pd.read_csv("Data/EUR_Keras.csv")
@@ -34,7 +37,7 @@ def result_data(n):
 	return np.array(result[1:])
 
 x_train = load_data(n)
-y_train = result_data(n).reshape(49,1)
+y_train = result_data(n).reshape(49)
 
 print(x_train.shape, y_train.shape)
 scaler = MinMaxScaler(feature_range=(0,1))
@@ -49,6 +52,24 @@ model.add(Activation('linear'))
 model.add(Dense(1, activation='linear'))
 
 model.compile(loss='mse', optimizer='rmsprop',)
-model.fit(x_train, y_train, batch_size=100, epochs=50)
+history = model.fit(x_train, y_train, batch_size=100, epochs=50)
 
+#history = model.fit(X, Y, epochs=100, validation_data=(valX, valY))
+plt.plot(history.history['loss'])
+#plt.plot(history.history['val_loss'])
+plt.title('model train vs validation loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper right')
+plt.show()
 
+def load_test_data():
+	df = pd.read_csv("C:/Users/Kurt/Desktop/Python_CSV_Data/CSVData/testrun.csv")
+	x = df.values.tolist()
+	x = np.array(x)
+	return x.reshape(1,100,24)
+
+#predict = predict_sequences_multiple(model, load_test_data(n),99,99)
+#plot_results_multiple(predict,0.1,99)
+prediction = model.predict(load_test_data())
+print(prediction)
