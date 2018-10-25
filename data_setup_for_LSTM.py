@@ -18,9 +18,9 @@ accountID = config['oanda']['account_id']
 access_token = config['oanda']['api_key']
 client = oandapyV20.API(access_token=access_token)
 
-instrument = ["EUR_USD", "EUR_GBP"]
+instrument = ["EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_NZD","EUR_USD"]
 
-candleCount = 3
+candleCount = 20
 params = {
     "count": candleCount,
     "granularity": 'H1'
