@@ -1,15 +1,9 @@
-import numpy as np 
-import pandas as pd 
-
-example = [[[1,2,3],[4,5,6]],[[2,3,4],[5,6,7]],[[3,4,5],[6,7,8]]]
-print(pd.DataFrame(example))
-
-import csv
-import pandas as pd
 import configparser
 import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
+import pandas as pd
+import csv
 import time
 
 config = configparser.ConfigParser()
