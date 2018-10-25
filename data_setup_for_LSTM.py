@@ -3,8 +3,7 @@ import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
 import pandas as pd
-import csv
-import time
+import numpy as np 
 
 config = configparser.ConfigParser()
 config.read('C:/Users/Kurt/Desktop/pythonCode/Python_CSV_Data/config/config_v20.ini')
@@ -12,13 +11,6 @@ accountID = config['oanda']['account_id']
 access_token = config['oanda']['api_key']
 client = oandapyV20.API(access_token=access_token)
 
-instrument = ["EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_NZD","EUR_USD"]
-
-candleCount = 20
-params = {
-    "count": candleCount,
-    "granularity": 'H1'
-}
 def Run(instrument, params):
 	candleData = instruments.InstrumentsCandles(instrument=instrument, params=params)
 	candleData = client.request(candleData)
@@ -30,8 +22,15 @@ def Run(instrument, params):
 		df = df.reset_index(drop=True)
 	return df
 
-bigFrame = pd.DataFrame()
-for x in range(len(instrument)):
-    bigFrame = pd.concat([bigFrame, Run(instrument[x], params)], axis=1)
-bigFrame.columns = instrument
-print(bigFrame)
+def GetData(instrument, candleCount, granularity):
+	params = {
+	    "count": candleCount,
+	    "granularity": granularity
+	}
+
+	bigFrame = pd.DataFrame()
+	for x in range(len(instrument)):
+	    bigFrame = pd.concat([bigFrame, Run(instrument[x], params)], axis=1)
+	bigFrame = bigFrame.T
+	bigFrame.index = instrument
+	return bigFrame

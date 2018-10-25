@@ -19,30 +19,24 @@ import numpy as np
 from numpy import newaxis
 import pandas as pd
 from matplotlib import pyplot as plt
+from data_setup_for_LSTM import GetData
 
-n=20
-def load_data(n):
-	df = pd.read_csv("Data/EUR_Keras.csv")
-	chunked_df = [df[i:i+n].values.tolist() for i in range(0,df.shape[0],n)]
-	return np.array(chunked_df[:-1])
+### USER INPUT ###
+instrument = ["EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_NZD","EUR_USD"]
+candleCount = 20
+granularity = 'H1'
 
-def result_data(n):
-	df = pd.read_csv("Data/EUR_Keras.csv")
-	df[['close']]
-	chunked_df = [df[i:i+n].values.tolist() for i in range(0,df.shape[0],n)]
-	chunked_array = np.array(chunked_df)
-	result = []
-	for i in chunked_array:
-		result.append(i[-1][-1])
-	return np.array(result[1:])
-
-x_train = load_data(n)
-y_train = result_data(n).reshape(249)
+df = GetData(instrument, candleCount, granularity)
+df_array = np.array(df.values.tolist())
+x_train = df_array
+y_train = df_array
 
 print(x_train.shape, y_train.shape)
 scaler = MinMaxScaler(feature_range=(0,1))
 x_train = scaler.fit_transform((x_train).reshape(-1,119520))
 x_train = x_train.reshape(249,20,24)
+
+exit()
 
 model = Sequential()
 model.add(LSTM(input_shape=(20,24), return_sequences=True, units=50))
@@ -51,26 +45,14 @@ model.add(LSTM(100, return_sequences=False))
 model.add(Activation('linear'))
 model.add(Dense(1, activation='linear'))
 
-model.compile(loss='mse', optimizer='rmsprop',)
-history = model.fit(x_train, y_train, batch_size=10, epochs=20)
+model.compile(loss='mse', optimizer='rmsprop')
+model.fit(x_train, y_train, batch_size=10, epochs=20)
+model.save('Models/EUR_20period_LSTM.h5')
 
-#history = model.fit(X, Y, epochs=100, validation_data=(valX, valY))
+history = model.fit(x_train, y_train, batch_size=10, epochs=20)
 plt.plot(history.history['loss'])
-#plt.plot(history.history['val_loss'])
-plt.title('model train vs validation loss')
+plt.title('train loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper right')
+plt.legend(['train'], loc='upper right')
 plt.show()
-'''
-def load_test_data():
-	df = pd.read_csv("C:/Users/Kurt/Desktop/Python_CSV_Data/CSVData/testrun.csv")
-	x = df.values.tolist()
-	x = np.array(x)
-	return x.reshape(1,100,24)
-
-#predict = predict_sequences_multiple(model, load_test_data(n),99,99)
-#plot_results_multiple(predict,0.1,99)
-prediction = model.predict(load_test_data())
-print(prediction)
-'''
