@@ -9,7 +9,7 @@ from keras.optimizers import Adam
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from matplotlib import pyplot as plt
-from LSTM_data import RunData
+from LSTM_data_new import RunData
 
 ### USER INPUT ###
 main_pair = ["EUR_USD"]
@@ -17,17 +17,17 @@ instrument = ["EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_NZD","EUR_USD"]
 granularity = 'H1'
 time_series = 24
 nCycle = 200
-epochs = 20
+epochs = 5
 candleCount = time_series*nCycle
 print('CandleCount:',candleCount,'of MAX 5000')
 
 # Array Data
 x_train = RunData(instrument, candleCount, granularity, time_series)
-y_train = RunData(main_pair, candleCount, granularity, time_series, close_only=True).reshape(candleCount-time_series ,1)
+y_train = RunData(main_pair, candleCount, granularity, time_series, close_only=True)
 
 # Batch Sizing
-x_train = x_train[:-1]
-y_train = y_train[1:]
+x_train = x_train[:]
+y_train = y_train[time_series:]
 x_train_shape = x_train.shape
 
 # Scale
