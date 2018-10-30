@@ -16,20 +16,22 @@ main_pair = ["EUR_USD"]
 instrument = ["EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_NZD","EUR_USD"]
 granularity = 'H1'
 time_series = 24
-nCycle = 200
-epochs = 20
+nCycle = 20
+epochs = 5
 candleCount = time_series*nCycle
 print('CandleCount:',candleCount,'of MAX 5000')
 
 # Array Data
-x_train = RunData(instrument, candleCount, granularity, time_series)
-y_train = RunData(main_pair, candleCount, granularity, time_series, close_only=True).reshape(candleCount-time_series ,1)
+x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
+y_train = RunData(main_pair, candleCount, granularity, time_series=time_series, close_only=True)
 
 # Batch Sizing
-x_train = x_train[:-1]
-y_train = y_train[1:]
+x_train = x_train[:]
+y_train = y_train[time_series:]
 x_train_shape = x_train.shape
-
+print(x_train.shape)
+print(y_train.shape)
+exit()
 # Scale
 scaler = MinMaxScaler(feature_range=(0,1))
 x_train = scaler.fit_transform((x_train).reshape(-1,x_train.shape[1]))
@@ -39,11 +41,11 @@ x_train = x_train.reshape(x_train_shape)
 model = Sequential()
 model.add(LSTM(100, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
 model.add(Dropout(0.2))
-model.add(LSTM(units= 100, return_sequences=False))
+model.add(LSTM(100))
 model.add(Dense(activation="linear", units=1))
 model.compile(loss='mean_squared_error', optimizer='adam')
 history = model.fit(x_train, y_train, batch_size=1, epochs=epochs, verbose=1)
-#model.save('Models/'+main_pair+'_'+'time_series'+'_LSTM_test.h5')
+#model.save('Models/'+main_pair[0]+'_'+'time_series'+'_LSTM_test.h5')
 
 plt.plot(history.history['loss'])
 plt.title('train loss')
