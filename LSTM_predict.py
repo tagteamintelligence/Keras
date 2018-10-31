@@ -3,7 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from LSTM_data import RunData
 import numpy as np
 
-main_pair = ["EUR_USD"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["USD_JPY"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -22,7 +22,7 @@ nCycle = 200
 candleCount = time_series*nCycle
 
 # Data
-model = load_model('Models/'+main_pair[0]+'_'+granularity+'_time_series_testLSTM.h5')
+model = load_model('Models/'+main_pair[0]+'_'+granularity+'_time_series_LSTM.h5')
 print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
 data = RunData(instrument, candleCount, granularity)
 data_shape = data.shape
@@ -31,10 +31,8 @@ scaler = MinMaxScaler(feature_range=(0,1))
 data = scaler.fit_transform((data).reshape(data_shape[0]*data_shape[1],data_shape[2]))
 
 data = data.reshape(data_shape)
-print(data.shape)
 data = data[-time_series:]
 data = data.reshape(1,time_series,data_shape[2])
-print(data.shape)
 # Predict EUR_USD
 prediction = model.predict(data)
 print(prediction)
