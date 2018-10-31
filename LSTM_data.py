@@ -41,7 +41,7 @@ def RunData(instrument, candleCount, granularity, time_series=1, close_only=Fals
 		section = main_frame[0,:,2]
 		section = section.reshape(section.shape[0],1)
 		return section
-	
+
 	elif close_only == False:
 		big_main_frame = np.empty((0,time_series,len(instrument)*3))
 		for x in range(candleCount-time_series):
@@ -49,5 +49,6 @@ def RunData(instrument, candleCount, granularity, time_series=1, close_only=Fals
 			section = section.reshape(1,section.shape[0],section.shape[1])
 			big_main_frame = np.append(big_main_frame, section, 0)
 			shift += 1
-			print('Data: '+str(shift)+'/'+str(candleCount-time_series))
+			if shift % 100 == 0:
+				print('x_train Data: '+str(shift)+'/'+str(candleCount-time_series))
 		return big_main_frame

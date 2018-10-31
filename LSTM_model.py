@@ -14,22 +14,22 @@ from LSTM_data import RunData
 ### USER INPUT ###
 main_pair = ["EUR_USD"]
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
-				  "CAD_CHF","CAD_JPY","CAD_SGD",
-			  	  "CHF_JPY",
-			  	  "EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_JPY","EUR_NZD","EUR_SGD","EUR_USD",
-			  	  "GBP_AUD","GBP_CAD","GBP_CHF","GBP_JPY","GBP_NZD","GBP_SGD","GBP_USD",
-			  	  "NZD_CAD","NZD_CHF","NZD_JPY","NZD_SGD","NZD_USD",
-			  	  "SGD_CHF","SGD_JPY",
-			  	  "TRY_JPY",
-			  	  "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
-			  	  "ZAR_JPY"]
+				   "CAD_CHF","CAD_JPY","CAD_SGD",
+			  	   "CHF_JPY",
+			  	   "EUR_AUD","EUR_CAD","EUR_CHF","EUR_GBP","EUR_JPY","EUR_NZD","EUR_SGD","EUR_USD",
+			  	   "GBP_AUD","GBP_CAD","GBP_CHF","GBP_JPY","GBP_NZD","GBP_SGD","GBP_USD",
+			  	   "NZD_CAD","NZD_CHF","NZD_JPY","NZD_SGD","NZD_USD",
+			  	   "SGD_CHF","SGD_JPY",
+			  	   "TRY_JPY",
+			  	   "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
+			  	   "ZAR_JPY"]
 instrument = [i for i in all_instruments if main_pair[0][0:3] in i]
 instrument = instrument+[i for i in all_instruments if main_pair[0][4:7] in i]
 
 granularity = 'H1'
 time_series = 24
 nCycle = 200
-epochs = 5
+epochs = 2
 candleCount = time_series*nCycle
 print('CandleCount:',candleCount,'of MAX 5000')
 
@@ -44,18 +44,22 @@ x_train_shape = x_train.shape
 
 # Scale
 scaler = MinMaxScaler(feature_range=(0,1))
-x_train = scaler.fit_transform((x_train).reshape(-1,x_train.shape[1]))
+x_train = scaler.fit_transform((x_train).reshape(x_train_shape[0]*x_train_shape[1],x_train_shape[2]))
 x_train = x_train.reshape(x_train_shape)
+print(x_train.shape)
+print(y_train.shape)
 
 # Create LSTM Model
 model = Sequential()
-model.add(LSTM(100, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
-model.add(Dropout(0.2))
-model.add(LSTM(100))
-model.add(Dense(activation="linear", units=1))
+model.add(LSTM(128, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
+model.add(Dropout(0.1))
+model.add(LSTM(256, return_sequences=True))
+model.add(Dropout(0.1))
+model.add(LSTM(128))
+model.add(Dense(1, activation="linear"))
 model.compile(loss='mean_squared_error', optimizer='adam')
 history = model.fit(x_train, y_train, batch_size=1, epochs=epochs, verbose=1)
-#model.save('Models/'+main_pair[0]+'_'+'time_series'+'_LSTM_test.h5')
+model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_LSTM.h5')
 
 plt.plot(history.history['loss'])
 plt.title('train loss')
