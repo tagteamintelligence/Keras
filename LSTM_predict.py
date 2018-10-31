@@ -38,5 +38,3 @@ print(data.shape)
 # Predict EUR_USD
 prediction = model.predict(data)
 print(prediction)
-
-# (4752, 24, 57)
