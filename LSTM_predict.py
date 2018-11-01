@@ -4,7 +4,7 @@ from LSTM_data import RunData
 from matplotlib import pyplot as plt
 import numpy as np
 
-main_pair = ["EUR_USD","GBP_USD"] # AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["EUR_USD","USD_JPY","GBP_USD","AUD_USD","NZD_USD","USD_CHF","USD_CAD"]
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -15,8 +15,7 @@ all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 			  	   "TRY_JPY",
 			  	   "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
 			  	   "ZAR_JPY"]
-instrument = [i for i in all_instruments if main_pair[0][0:3] in i]
-instrument = instrument+[i for i in all_instruments if main_pair[0][4:7] in i]
+
 granularity = 'H1'
 time_series = 24
 nCycle = 200
@@ -24,6 +23,8 @@ candleCount = time_series*nCycle
 
 for i in range(len(main_pair)):
 	# Data
+	instrument = [x for x in all_instruments if main_pair[i][0:3] in x]
+	instrument = instrument+[x for x in all_instruments if main_pair[i][4:7] in x]
 	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_LSTM.h5')
 	print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
 	data = RunData(instrument, candleCount, granularity)
@@ -35,30 +36,19 @@ for i in range(len(main_pair)):
 	data = data.reshape(data_shape)
 	data = data[-time_series:]
 	data = data.reshape(1,time_series,data_shape[2])
+	print(data.shape)
 	# Predict EUR_USD
 	prediction = model.predict(data)
 	print(prediction)
 
-	plot_value_shape = (time_series*3)+1
-	plot_value = RunData([main_pair[i]], time_series*3, granularity, close_only=True).reshape(plot_value_shape).tolist()
+	plot_value_shape = (time_series*5)+1
+	plot_value = RunData([main_pair[i]], time_series*5, granularity, close_only=True).reshape(plot_value_shape).tolist()
 	plt.figure()
 	plt.plot([float(i) for i in plot_value])
-	plt.plot((time_series*3)+time_series+1, float(prediction[0]), marker='o', markersize=5, color="red")
+	plt.plot((time_series*5)+time_series+1, float(prediction[0]), marker='o', markersize=5, color="red")
 	plt.title(main_pair[i])
 	plt.xlabel('Candle Count')
 	plt.ylabel('Close Price')
 	plt.show(block=False)
 
 plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
