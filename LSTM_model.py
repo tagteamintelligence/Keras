@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from LSTM_data import RunData
 
 ### USER INPUT ###
-main_pair = ["USD_JPY"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["USD_JPY"] # USD_JPY AUD_USD NZD_USD USD_CHF USD_CAD
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",

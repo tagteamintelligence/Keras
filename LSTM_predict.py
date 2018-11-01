@@ -1,9 +1,10 @@
 from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 from LSTM_data import RunData
+from matplotlib import pyplot as plt
 import numpy as np
 
-main_pair = ["USD_JPY"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["EUR_USD","GBP_USD"] # AUD_USD NZD_USD USD_CHF USD_CAD
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -21,18 +22,43 @@ time_series = 24
 nCycle = 200
 candleCount = time_series*nCycle
 
-# Data
-model = load_model('Models/'+main_pair[0]+'_'+granularity+'_time_series_LSTM.h5')
-print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
-data = RunData(instrument, candleCount, granularity)
-data_shape = data.shape
+for i in range(len(main_pair)):
+	# Data
+	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_LSTM.h5')
+	print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
+	data = RunData(instrument, candleCount, granularity)
+	data_shape = data.shape
 
-scaler = MinMaxScaler(feature_range=(0,1))
-data = scaler.fit_transform((data).reshape(data_shape[0]*data_shape[1],data_shape[2]))
+	scaler = MinMaxScaler(feature_range=(0,1))
+	data = scaler.fit_transform((data).reshape(data_shape[0]*data_shape[1],data_shape[2]))
 
-data = data.reshape(data_shape)
-data = data[-time_series:]
-data = data.reshape(1,time_series,data_shape[2])
-# Predict EUR_USD
-prediction = model.predict(data)
-print(prediction)
+	data = data.reshape(data_shape)
+	data = data[-time_series:]
+	data = data.reshape(1,time_series,data_shape[2])
+	# Predict EUR_USD
+	prediction = model.predict(data)
+	print(prediction)
+
+	plot_value_shape = (time_series*3)+1
+	plot_value = RunData([main_pair[i]], time_series*3, granularity, close_only=True).reshape(plot_value_shape).tolist()
+	plt.figure()
+	plt.plot([float(i) for i in plot_value])
+	plt.plot((time_series*3)+time_series+1, float(prediction[0]), marker='o', markersize=5, color="red")
+	plt.title(main_pair[i])
+	plt.xlabel('Candle Count')
+	plt.ylabel('Close Price')
+	plt.show(block=False)
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
