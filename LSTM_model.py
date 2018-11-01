@@ -27,9 +27,9 @@ instrument = [i for i in all_instruments if main_pair[0][0:3] in i]
 instrument = instrument+[i for i in all_instruments if main_pair[0][4:7] in i]
 
 granularity = 'H1'
-time_series = 24
-nCycle = 200
-epochs = 2
+time_series = 120
+nCycle = 40
+epochs = 5
 candleCount = time_series*nCycle
 print('CandleCount:',candleCount,'of MAX 5000')
 
@@ -52,14 +52,12 @@ print(y_train.shape)
 # Create LSTM Model
 model = Sequential()
 model.add(LSTM(128, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
-model.add(Dropout(0.1))
-model.add(LSTM(256, return_sequences=True))
-model.add(Dropout(0.1))
+model.add(Dropout(0.25))
 model.add(LSTM(128))
 model.add(Dense(1, activation="linear"))
 model.compile(loss='mean_squared_error', optimizer='adam')
 history = model.fit(x_train, y_train, batch_size=1, epochs=epochs, verbose=1)
-model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_LSTM.h5')
+model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+time_series+'_LSTM.h5')
 
 plt.plot(history.history['loss'])
 plt.title('train loss')
