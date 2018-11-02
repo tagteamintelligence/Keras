@@ -28,10 +28,10 @@ instrument = instrument+[i for i in all_instruments if main_pair[0][4:7] in i]
 
 granularity = 'H1'
 time_series = 120
-nCycle = 40
+look_forward = 24
 epochs = 5
 batch_size = 10
-candleCount = time_series*nCycle
+candleCount = 4800
 print('CandleCount:',candleCount,'of MAX 5000')
 
 # Array Data
@@ -39,8 +39,8 @@ x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
 y_train = RunData(main_pair, candleCount, granularity, time_series=time_series, close_only=True)
 
 # Batch Sizing
-x_train = x_train[:]
-y_train = y_train[time_series:]
+x_train = x_train[:-look_forward]
+y_train = y_train[time_series+look_forward:]
 x_train_shape = x_train.shape
 
 # Scale
@@ -58,7 +58,7 @@ model.add(LSTM(128))
 model.add(Dense(1, activation="linear"))
 model.compile(loss='mean_squared_error', optimizer='adam')
 history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=1)
-model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+str(time_series)+'_LSTM.h5')
+model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM.h5')
 
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])

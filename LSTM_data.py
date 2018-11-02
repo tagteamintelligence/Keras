@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 config = configparser.ConfigParser()
-config.read('../oanda_2018/config/config_v20.ini')
+config.read('../config/config_v20.ini')
 accountID = config['oanda']['account_id']
 access_token = config['oanda']['api_key']
 client = oandapyV20.API(access_token=access_token)
@@ -56,7 +56,7 @@ def RunData(instrument, candleCount, granularity, time_series=1, close_only=Fals
 def BollingerBand(data, window, num_std):
 	df = pd.DataFrame(data)
 	df.columns = ['close']
-	roll_mean = df['close'].rolling(20).mean()
+	roll_mean = df['close'].rolling(24).mean()
 	roll_dev = df['close'].rolling(window).std()
 
 	df['upper_band'] = roll_mean + (roll_dev*num_std)
