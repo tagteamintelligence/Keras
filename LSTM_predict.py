@@ -17,15 +17,15 @@ all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 			  	   "ZAR_JPY"]
 
 granularity = 'H1'
-time_series = 24
-nCycle = 200
+time_series = 120
+nCycle = 40
 candleCount = time_series*nCycle
 
 for i in range(len(main_pair)):
 	# Data
 	instrument = [x for x in all_instruments if main_pair[i][0:3] in x]
 	instrument = instrument+[x for x in all_instruments if main_pair[i][4:7] in x]
-	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_LSTM.h5')
+	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_'+str(time_series)+'_LSTM.h5')
 	print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
 	data = RunData(instrument, candleCount, granularity)
 	data_shape = data.shape
@@ -43,7 +43,7 @@ for i in range(len(main_pair)):
 
 	plot_value_shape = (time_series*5)+1
 	plot_value = RunData([main_pair[i]], time_series*5, granularity, close_only=True).reshape(plot_value_shape).tolist()
-	plt.figure()
+	plt.figure(num=main_pair[i])
 	plt.plot([float(i) for i in plot_value])
 	plt.plot((time_series*5)+time_series+1, float(prediction[0]), marker='o', markersize=5, color="red")
 	plt.title(main_pair[i])

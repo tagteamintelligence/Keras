@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from LSTM_data import RunData
 
 ### USER INPUT ###
-main_pair = ["USD_JPY"] # USD_JPY AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["USD_CAD"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -30,6 +30,7 @@ granularity = 'H1'
 time_series = 120
 nCycle = 40
 epochs = 5
+batch_size = 10
 candleCount = time_series*nCycle
 print('CandleCount:',candleCount,'of MAX 5000')
 
@@ -56,12 +57,13 @@ model.add(Dropout(0.25))
 model.add(LSTM(128))
 model.add(Dense(1, activation="linear"))
 model.compile(loss='mean_squared_error', optimizer='adam')
-history = model.fit(x_train, y_train, batch_size=1, epochs=epochs, verbose=1)
-model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+time_series+'_LSTM.h5')
+history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=1)
+model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+str(time_series)+'_LSTM.h5')
 
 plt.plot(history.history['loss'])
-plt.title('train loss')
+plt.plot(history.history['val_loss'])
+plt.title('model train vs validation loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train'], loc='upper right')
+plt.legend(['train', 'validation'], loc='upper right')
 plt.show()
