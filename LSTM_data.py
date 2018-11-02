@@ -50,5 +50,16 @@ def RunData(instrument, candleCount, granularity, time_series=1, close_only=Fals
 			big_main_frame = np.append(big_main_frame, section, 0)
 			shift += 1
 			if shift % 100 == 0:
-				print('x_train Data: '+str(shift)+'/'+str(candleCount-time_series))
+				print('Data: '+str(shift)+'/'+str(candleCount-time_series))
 		return big_main_frame
+
+def BollingerBand(data, window, num_std):
+	df = pd.DataFrame(data)
+	df.columns = ['close']
+	roll_mean = df['close'].rolling(20).mean()
+	roll_dev = df['close'].rolling(window).std()
+
+	df['upper_band'] = roll_mean + (roll_dev*num_std)
+	df['lower_band'] = roll_mean - (roll_dev*num_std)
+
+	return df

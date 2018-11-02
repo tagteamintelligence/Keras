@@ -2,6 +2,7 @@ from keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 from LSTM_data import RunData
 from matplotlib import pyplot as plt
+from LSTM_data import BollingerBand
 import numpy as np
 
 main_pair = ["EUR_USD","USD_JPY","GBP_USD","AUD_USD","NZD_USD","USD_CHF","USD_CAD"]
@@ -20,13 +21,17 @@ granularity = 'H1'
 time_series = 120
 nCycle = 40
 candleCount = time_series*nCycle
+#Bollinger Band
+window = 120
+std = 2
 
+plt.figure(num='AI Bot')
 for i in range(len(main_pair)):
 	# Data
 	instrument = [x for x in all_instruments if main_pair[i][0:3] in x]
 	instrument = instrument+[x for x in all_instruments if main_pair[i][4:7] in x]
 	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_'+str(time_series)+'_LSTM.h5')
-	print('Model Loaded with CandleCount:',candleCount,'of MAX 5000')
+	print(main_pair[i]+' Loaded with CandleCount:',candleCount,'of MAX 5000')
 	data = RunData(instrument, candleCount, granularity)
 	data_shape = data.shape
 
@@ -42,11 +47,16 @@ for i in range(len(main_pair)):
 	print(prediction)
 
 	plot_value_shape = (time_series*5)+1
-	plot_value = RunData([main_pair[i]], time_series*5, granularity, close_only=True).reshape(plot_value_shape).tolist()
-	plt.figure(num=main_pair[i])
-	plt.plot([float(i) for i in plot_value])
-	plt.plot((time_series*5)+time_series+1, float(prediction[0]), marker='o', markersize=5, color="red")
+	data = RunData([main_pair[i]], time_series*5, granularity, close_only=True).reshape(plot_value_shape)
+	plot_value = data.tolist()
+	df = BollingerBand(data, window, std)
+
+	plt.subplot(2,4,i+1)
 	plt.title(main_pair[i])
+	plt.plot([float(i) for i in plot_value], color='blue')
+	plt.plot((time_series*5), float(prediction[0]), marker='o', markersize=5, color="red")
+	plt.plot(df['upper_band'].values.tolist(), color='black')
+	plt.plot(df['lower_band'].values.tolist(), color='black')
 	plt.xlabel('Candle Count')
 	plt.ylabel('Close Price')
 	plt.show(block=False)
