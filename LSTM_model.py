@@ -10,9 +10,10 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from matplotlib import pyplot as plt
 from LSTM_data import RunData
+import time
 
 ### USER INPUT ###
-main_pair = ["USD_CAD"] #EUR_USD USD_JPY GBP_USD AUD_USD NZD_USD USD_CHF USD_CAD
+main_pair = ["EUR_USD","USD_JPY","GBP_USD","AUD_USD","NZD_USD","USD_CHF","USD_CAD"]
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -23,47 +24,62 @@ all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 			  	   "TRY_JPY",
 			  	   "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
 			  	   "ZAR_JPY"]
-instrument = [i for i in all_instruments if main_pair[0][0:3] in i]
-instrument = instrument+[i for i in all_instruments if main_pair[0][4:7] in i]
 
-granularity = 'H1'
-time_series = 120
-nCycle = 40
-epochs = 5
-batch_size = 10
-candleCount = time_series*nCycle
+granularity = 'M5'
+time_series = 288
+look_forward = 48
+epochs = 4
+batch_size = 1
+candleCount = 4896
 print('CandleCount:',candleCount,'of MAX 5000')
 
-# Array Data
-x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
-y_train = RunData(main_pair, candleCount, granularity, time_series=time_series, close_only=True)
+plt.figure(num='AI Model')
+for x in range(len(main_pair)):
+	instrument = [i for i in all_instruments if main_pair[x][0:3] in i]
+	instrument = instrument+[i for i in all_instruments if main_pair[x][4:7] in i]
 
-# Batch Sizing
-x_train = x_train[:]
-y_train = y_train[time_series:]
-x_train_shape = x_train.shape
+	# Array Data
+	print('Loading '+main_pair[x]+' x_train...')
+	x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
+	print('Done Loading '+main_pair[x]+' x_train')
+	print('Loading '+main_pair[x]+' y_train...')
+	y_train = None
+	while y_train is None:
+		try:
+			y_train = RunData([main_pair[x]], candleCount, granularity, time_series=time_series, close_only=True)
+		except:
+			pass
+			print('Oanda Error')
+			time.sleep(2)
+	print('Done Loading '+main_pair[x]+' y_train')
 
-# Scale
-scaler = MinMaxScaler(feature_range=(0,1))
-x_train = scaler.fit_transform((x_train).reshape(x_train_shape[0]*x_train_shape[1],x_train_shape[2]))
-x_train = x_train.reshape(x_train_shape)
-print(x_train.shape)
-print(y_train.shape)
+	# Batch Sizing
+	x_train = x_train[:-look_forward]
+	y_train = y_train[time_series+look_forward:]
+	x_train_shape = x_train.shape
 
-# Create LSTM Model
-model = Sequential()
-model.add(LSTM(128, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
-model.add(Dropout(0.25))
-model.add(LSTM(128))
-model.add(Dense(1, activation="linear"))
-model.compile(loss='mean_squared_error', optimizer='adam')
-history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=1)
-model.save('Models/'+main_pair[0]+'_'+granularity+'_time_series_'+str(time_series)+'_LSTM.h5')
+	# Scale
+	scaler = MinMaxScaler(feature_range=(0,1))
+	x_train = scaler.fit_transform((x_train.astype(float)).reshape(x_train_shape[0]*x_train_shape[1],x_train_shape[2]))
+	x_train = x_train.reshape(x_train_shape)
 
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model train vs validation loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper right')
+	# Create LSTM Model
+	model = Sequential()
+	model.add(LSTM(128, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
+	model.add(Dropout(0.25))
+	model.add(LSTM(128))
+	model.add(Dense(1, activation="linear"))
+	model.compile(loss='mean_squared_error', optimizer='adam')
+	history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=2)
+	model.save('Models/'+main_pair[x]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM.h5')
+	print(main_pair[x], 'Model Saved')
+
+	plt.subplot(4,2,x+1)
+	plt.plot(history.history['loss'])
+	plt.plot(history.history['val_loss'])
+	plt.title(main_pair[x]+' model train vs validation loss')
+	plt.ylabel('loss')
+	plt.xlabel('epoch')
+	plt.legend(['train', 'validation'], loc='upper right')
+	
 plt.show()
