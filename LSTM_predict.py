@@ -17,10 +17,11 @@ all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 			  	   "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
 			  	   "ZAR_JPY"]
 
-granularity = 'M15'
-time_series = 96
-look_forward = 20
-candleCount = 4992
+granularity = 'H1'
+time_series = 240
+look_forward = 24
+candleCount = 4800
+
 #Bollinger Band
 window = 120
 std = 2
@@ -43,7 +44,7 @@ for i in range(len(main_pair)):
 	data = data.reshape(1,time_series,data_shape[2])
 	# Predict EUR_USD
 	prediction = model.predict(data)
-	print(main_pair[i], prediction)
+	print(main_pair[i]+":", prediction)
 
 	plot_value_shape = (time_series*5)+1
 	data = RunData([main_pair[i]], time_series*5, granularity, close_only=True).reshape(plot_value_shape)

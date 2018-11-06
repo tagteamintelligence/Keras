@@ -11,7 +11,7 @@ accountID = config['oanda']['account_id']
 access_token = config['oanda']['api_key']
 client = oandapyV20.API(access_token=access_token)
 
-def Data(instrument, candleCount, granularity):
+def Data(instrument, candleCount, granularity, time=False):
 	params = {
 	    "count": candleCount,
 	    "granularity": granularity
@@ -19,11 +19,15 @@ def Data(instrument, candleCount, granularity):
 	candleData = instruments.InstrumentsCandles(instrument=instrument, params=params)
 	candleData = client.request(candleData)
 	candleData = candleData ['candles']
-	df = pd.DataFrame([[str(x['mid']['h']) for x in candleData],
+	df = pd.DataFrame([[str(x['time']) for x in candleData],
+					   [str(x['mid']['h']) for x in candleData],
 	    			   [str(x['mid']['l']) for x in candleData],
 	    			   [str(x['mid']['c']) for x in candleData]]).T
-	df.columns = ['high','low','close']
-	df = np.array(df.values)
+	df.columns = ['time','high','low','close']
+	if time == True:
+		df = np.array(df.values)
+		return df
+	df = np.array(df[['high','low','close']].values)
 	return df
 
 def RunData(instrument, candleCount, granularity, time_series=1, close_only=False):

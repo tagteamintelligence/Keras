@@ -65,9 +65,11 @@ for x in range(len(main_pair)):
 
 	# Create LSTM Model
 	model = Sequential()
-	model.add(LSTM(128, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
-	model.add(Dropout(0.25))
-	model.add(LSTM(128))
+	model.add(LSTM(50, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
+	model.add(Dropout(0.2))
+	model.add(LSTM(50))
+	model.add(Dropout(0.2))
+	model.add(LSTM(50))
 	model.add(Dense(1, activation="linear"))
 	model.compile(loss='mean_squared_error', optimizer='adam')
 	history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=2)
