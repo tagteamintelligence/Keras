@@ -29,7 +29,7 @@ granularity = 'M5'
 time_series = 288
 look_forward = 48
 epochs = 4
-batch_size = 1
+batch_size = 5
 candleCount = 4896
 print('CandleCount:',candleCount,'of MAX 5000')
 
@@ -38,19 +38,26 @@ for x in range(len(main_pair)):
 	instrument = [i for i in all_instruments if main_pair[x][0:3] in i]
 	instrument = instrument+[i for i in all_instruments if main_pair[x][4:7] in i]
 
-	# Array Data
-	print('Loading '+main_pair[x]+' x_train...')
-	x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
+	# x_train
+	x_train = None
+	while x_train is None:
+		try:
+			x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
+		except:
+			pass
+			print('x_train Oanda Error')
+			time.sleep(10)
 	print('Done Loading '+main_pair[x]+' x_train')
-	print('Loading '+main_pair[x]+' y_train...')
+
+	# y_train
 	y_train = None
 	while y_train is None:
 		try:
 			y_train = RunData([main_pair[x]], candleCount, granularity, time_series=time_series, close_only=True)
 		except:
 			pass
-			print('Oanda Error')
-			time.sleep(2)
+			print('y_train Oanda Error')
+			time.sleep(10)
 	print('Done Loading '+main_pair[x]+' y_train')
 
 	# Batch Sizing
@@ -67,7 +74,7 @@ for x in range(len(main_pair)):
 	model = Sequential()
 	model.add(LSTM(50, return_sequences=True, input_shape=(x_train_shape[1], x_train_shape[2])))
 	model.add(Dropout(0.2))
-	model.add(LSTM(50))
+	model.add(LSTM(50, return_sequences=True))
 	model.add(Dropout(0.2))
 	model.add(LSTM(50))
 	model.add(Dense(1, activation="linear"))

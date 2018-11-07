@@ -30,7 +30,7 @@ def Data(instrument, candleCount, granularity, time=False):
 	df = np.array(df[['high','low','close']].values)
 	return df
 
-def RunData(instrument, candleCount, granularity, time_series=1, close_only=False):
+def RunData(instrument, candleCount, granularity, time_series=1, close_only=False, time=False):
 	if time_series == 1:
 		candleCount = candleCount+1
 	shift = 0	
@@ -41,19 +41,22 @@ def RunData(instrument, candleCount, granularity, time_series=1, close_only=Fals
 	main_frame = main_frame.reshape(1,main_frame.shape[0],main_frame.shape[1])
 	
 	if close_only == True:
-		big_main_frame = np.empty((0,1,len(instrument)))
-		section = main_frame[0,:,2]
+		# big_main_frame = np.empty((0,1,len(instrument)))
+		if time == True:
+			section = main_frame[0,:,3]
+		elif time == False:
+			section = main_frame[0,:,2]
 		section = section.reshape(section.shape[0],1)
 		return section
 
-	elif close_only == False:
-		big_main_frame = np.empty((0,time_series,len(instrument)*3))
+	elif close_only == False: 
+		big_main_frame = [] # np.empty((0,time_series,len(instrument)*3))
 		for x in range(candleCount-time_series):
 			section = main_frame[0,x:x+time_series,:]
-			section = section.reshape(1,section.shape[0],section.shape[1])
-			big_main_frame = np.append(big_main_frame, section, 0)
+			section = section.reshape(section.shape[0],section.shape[1])
+			big_main_frame.append(section.tolist())
 			shift += 1
-		return big_main_frame
+		return np.array(big_main_frame)
 
 def BollingerBand(data, window, num_std):
 	df = pd.DataFrame(data)
