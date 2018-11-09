@@ -22,16 +22,12 @@ time_series = 240
 look_forward = 24
 candleCount = 4800
 
-#Bollinger Band
-window = 120
-std = 2
-
 plt.figure(num='AI prediction')
 for i in range(len(main_pair)):
 	# Data
 	instrument = [x for x in all_instruments if main_pair[i][0:3] in x]
 	instrument = instrument+[x for x in all_instruments if main_pair[i][4:7] in x]
-	model = load_model('Models/'+main_pair[i]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM.h5')
+	model = load_model('Models/'+main_pair[i]+'/'+granularity+'/'+str(time_series)+'_'+str(look_forward)+'_LSTM.h5')
 	print(str(i+1)+'/'+str(len(main_pair))+' Loaded with CandleCount:',candleCount,'of MAX 5000')
 	data = RunData(instrument, candleCount, granularity)
 	data_shape = data.shape

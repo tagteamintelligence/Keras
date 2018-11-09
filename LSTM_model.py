@@ -13,7 +13,7 @@ from LSTM_data import RunData
 import time
 
 ### USER INPUT ###
-main_pair = ["EUR_USD","USD_JPY","GBP_USD","AUD_USD","NZD_USD","USD_CHF","USD_CAD"]
+main_pair = ["EUR_USD"]#,"USD_JPY","GBP_USD","AUD_USD","NZD_USD","USD_CHF","USD_CAD"]
 all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 				   "CAD_CHF","CAD_JPY","CAD_SGD",
 			  	   "CHF_JPY",
@@ -25,12 +25,14 @@ all_instruments = ["AUD_CAD","AUD_CHF","AUD_JPY","AUD_NZD","AUD_SGD","AUD_USD",
 			  	   "USD_CAD","USD_CHF","USD_CNH","USD_HKD","USD_JPY","USD_SGD","USD_THB",
 			  	   "ZAR_JPY"]
 
-granularity = 'M5'
-time_series = 288
-look_forward = 48
-epochs = 4
-batch_size = 5
-candleCount = 4896
+granularity = 'H1'
+time_series = 240
+look_forward = 24
+epochs = 5
+batch_size = 25
+candleCount = 4800
+ma_list = [5,10,20,50,100,200,250]
+
 print('CandleCount:',candleCount,'of MAX 5000')
 
 plt.figure(num='AI Model')
@@ -42,13 +44,13 @@ for x in range(len(main_pair)):
 	x_train = None
 	while x_train is None:
 		try:
-			x_train = RunData(instrument, candleCount, granularity, time_series=time_series)
+			x_train = RunData([main_pair[x]], candleCount, granularity, time_series=time_series, ma_list=ma_list)
 		except:
 			pass
 			print('x_train Oanda Error')
 			time.sleep(10)
 	print('Done Loading '+main_pair[x]+' x_train')
-
+	time.sleep(2)
 	# y_train
 	y_train = None
 	while y_train is None:
@@ -61,6 +63,10 @@ for x in range(len(main_pair)):
 	print('Done Loading '+main_pair[x]+' y_train')
 
 	# Batch Sizing
+	if ma_list != None:
+		x_train = x_train[:-look_forward]
+		y_train = y_train[time_series+look_forward+(max(ma_list)-1):]
+		x_train_shape = x_train.shape
 	x_train = x_train[:-look_forward]
 	y_train = y_train[time_series+look_forward:]
 	x_train_shape = x_train.shape
@@ -77,10 +83,11 @@ for x in range(len(main_pair)):
 	model.add(LSTM(50, return_sequences=True))
 	model.add(Dropout(0.2))
 	model.add(LSTM(50))
+	model.add(Dropout(0.1))
 	model.add(Dense(1, activation="linear"))
 	model.compile(loss='mean_squared_error', optimizer='adam')
 	history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.3, verbose=2)
-	model.save('Models/'+main_pair[x]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM.h5')
+	model.save('Models/'+main_pair[x]+'/'+granularity+'/'+str(time_series)+'_'+str(look_forward)+'_LSTM_MA.h5')
 	print(main_pair[x], 'Model Saved')
 
 	plt.subplot(4,2,x+1)
