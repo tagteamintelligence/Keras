@@ -3,17 +3,12 @@ import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
 import oandapyV20.endpoints.orders as orders
 import pandas as pd
+pd.set_option('display.max_columns',10)
+pd.set_option('display.width',None)
 
 class Indicators:
 	def __init__(self, df):
 		self.df = df
-
-	def Clean(self):
-		x1 = len(self.df)
-		df = self.df.dropna()
-		x2 = len(df)
-		print('Values Cleaned:',x1-x2)
-		return df
 
 	def SMA(self, ma_list, label='close'):
 		df = self.df
@@ -69,7 +64,7 @@ class Data:
 						   [x['mid']['o'] for x in self.candleData],
 						   [x['mid']['h'] for x in self.candleData],
 						   [x['mid']['l'] for x in self.candleData],
-						   [x['mid']['c'] for x in self.candleData],]).T
+						   [x['mid']['c'] for x in self.candleData]]).T
 		df.columns = ['time','open','high','low','close']
 		if time == True:
 			df['time'] = pd.to_datetime(df['time'])
@@ -83,7 +78,7 @@ class Data:
 		df = pd.DataFrame([[x['time'] for x in self.candleData],
 						   [x['mid']['h'] for x in self.candleData],
 						   [x['mid']['l'] for x in self.candleData],
-						   [x['mid']['c'] for x in self.candleData],]).T
+						   [x['mid']['c'] for x in self.candleData]]).T
 		df.columns = ['time','high','low','close']
 		if time == True:
 			df['time'] = pd.to_datetime(df['time'])
@@ -96,7 +91,7 @@ class Data:
 	def HL(self, time=False):
 		df = pd.DataFrame([[x['time'] for x in self.candleData],
 						   [x['mid']['h'] for x in self.candleData],
-						   [x['mid']['l'] for x in self.candleData],]).T
+						   [x['mid']['l'] for x in self.candleData]]).T
 		df.columns = ['time','high','low']
 		if time == True:
 			df['time'] = pd.to_datetime(df['time'])
@@ -108,7 +103,7 @@ class Data:
 
 	def Close(self, time=False):
 		df = pd.DataFrame([[x['time'] for x in self.candleData],
-						   [x['mid']['c'] for x in self.candleData],]).T
+						   [x['mid']['c'] for x in self.candleData]]).T
 		df.columns = ['time','close']
 		if time == True:
 			df['time'] = pd.to_datetime(df['time'])
@@ -118,28 +113,51 @@ class Data:
 			return df
 		return df[['close']]
 
-	def Percent(self, time=False):
-		if time == True:
-			df = Data(self.instrument, self.granularity, self.candleCount).OHLC(time=True)
-		if time == False:
-			df = Data(self.instrument, self.granularity, self.candleCount).OHLC()
+
+class Percent:
+	def __init__(self, df):
+		self.df = df
+
+	def HLC(self, time=False):
+		df = self.df
 		df['PCT_close'] = ((df['open'].astype(float) - df['close'].astype(float)) / df['open'].astype(float))*100
-		df['PCT_high'] = ((df['open'].astype(float) - df['high'].astype(float)) / df['open'].astype(float))*100
-		df['PCT_low'] = ((df['open'].astype(float) - df['low'].astype(float)) / df['open'].astype(float))*100
+		df['PCT_high'] = ((df['high'].astype(float) - df['close'].astype(float)) / df['high'].astype(float))*100
+		df['PCT_low'] = ((df['low'].astype(float) - df['close'].astype(float)) / df['low'].astype(float))*100
 		if time == True:
 			return df[['time','PCT_close','PCT_high','PCT_low']]
 		return df[['PCT_close','PCT_high','PCT_low']]
+
+	def Close(self, time=False):
+		df = self.df
+		df['PCT_close'] = ((df['open'].astype(float) - df['close'].astype(float)) / df['open'].astype(float))*100
+		if time == True:
+			return df[['time','PCT_close']]
+		return df[['PCT_close']]
+	def SMA(self, ma_list):
+		df = self.df
+		df = Indicators(df).SMA(ma_list)
+		for x in ma_list:
+			df['PCT_SMA_{}'.format(x)] = ((df['SMA_{}'.format(x)].astype(float) - df['close'].astype(float)) / df['SMA_{}'.format(x)].astype(float))*100
+			df = df.drop(columns=['SMA_{}'.format(x)])
+		return df
 
 
 class Feature:
 	def __init__(self, df):
 		self.df = df
 
+	def Clean(self):
+		x1 = len(self.df)
+		df = self.df.dropna()
+		x2 = len(df)
+		df = df.reset_index(drop=True)
+		print('Values Cleaned:',x1-x2)
+		return df
+
 	def Square(self, label_list=['high','low']):
 		df = self.df
 		for x in label_list:
 			df['square_{}'.format(x)] = df[x].astype(float)**2
-			n += 1
 		return df
 
 	def Histogram(self, bins):
@@ -151,13 +169,12 @@ class Feature:
 			plt.show()
 		return df
 
-	def Bins(self, label, bins, labels=False):
+	def Bins(self, bins, labels=False):
 		df = self.df
-		df['bin_{}'.format(label)] = pd.cut(df[label], bins, labels=labels)
-		return df
+		return pd.cut(df, bins, labels=labels, right=False)
 
 
-class TimeSeries:
+class Time_Series:
 	def __init__(self, df, value):
 		self.df = df
 		self.value = value
@@ -178,16 +195,51 @@ class TimeSeries:
 		pass
 
 
+class Train_Data:
+	def __init__(self, df):
+		self.data = df
+
+	def Main(self, ma_list):
+		df = Percent(self.data).SMA(ma_list)
+		df['PCT_close'] = Percent(df).Close()
+		df['bin_PCT_close'] = Feature(df['PCT_close']).Bins(101)
+		df = Feature(df).Clean()
+		for x in ma_list:
+			df['SMA_{}'.format(x)] = Feature(df['PCT_SMA_{}'.format(x)]).Bins(41)
+			df = df.drop(columns=['PCT_SMA_{}'.format(x)])
+		df = df.drop(columns=['open','high','low','close','PCT_close'])
+		return df
+
+
+class Train:
+	def __init__(self, instrument, granularity, candleCount, timeSeries, look_forward):
+		self.instrument = instrument
+		self.granularity = granularity
+		self.look_forward = look_forward
+		data = Data(instrument, granularity, candleCount).OHLC()
+		df = Train_Data(data).Main(ma_list)
+		df = Time_Series(df, timeSeries).Section()
+		self.df = df
+
+	def X_Train(self):
+		return self.df[:-look_forward]
+
+	def Y_Train(self):
+		import numpy as np
+		data = Data(instrument, granularity, self.df.shape[0]).Close()
+		data = data[look_forward:]
+		return data
+
+
 if __name__ == '__main__':
 	instrument = 'EUR_USD'
 	granularity = 'H1'
-	candleCount = 5000
+	candleCount = 4800
+	timeSeries = 240
+	look_forward = 10
+	ma_list = [5,10,20,50,100,200,250]
 
-	df = Data(instrument, granularity, candleCount).Percent()
-	df = Feature(df).Bins('PCT_close',100)
-
-	print(df)
-
-
-
-
+	train = Train(instrument, granularity, candleCount, timeSeries, look_forward)
+	x_train = train.X_Train()
+	y_train = train.Y_Train()
+	print(x_train.shape,y_train.shape)
