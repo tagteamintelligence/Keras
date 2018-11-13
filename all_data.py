@@ -1,3 +1,11 @@
+import keras 
+# Model
+from keras.models import Sequential
+from keras.layers.core import Dense
+from keras.layers import LSTM
+from keras.layers import Dropout
+from keras.optimizers import Adam
+# Data
 import configparser
 import oandapyV20
 import oandapyV20.endpoints.instruments as instruments
@@ -120,24 +128,34 @@ class Percent:
 
 	def HLC(self, time=False):
 		df = self.df
-		df['PCT_close'] = ((df['open'].astype(float) - df['close'].astype(float)) / df['open'].astype(float))*100
-		df['PCT_high'] = ((df['high'].astype(float) - df['close'].astype(float)) / df['high'].astype(float))*100
-		df['PCT_low'] = ((df['low'].astype(float) - df['close'].astype(float)) / df['low'].astype(float))*100
+		df['PCT_close'] = ((df['close'].astype(float) - df['open'].astype(float)) / df['close'].astype(float))*100
+		df['PCT_high'] = ((df['close'].astype(float) - df['high'].astype(float)) / df['close'].astype(float))*100
+		df['PCT_low'] = ((df['close'].astype(float) - df['low'].astype(float)) / df['close'].astype(float))*100
 		if time == True:
 			return df[['time','PCT_close','PCT_high','PCT_low']]
 		return df[['PCT_close','PCT_high','PCT_low']]
 
 	def Close(self, time=False):
 		df = self.df
-		df['PCT_close'] = ((df['open'].astype(float) - df['close'].astype(float)) / df['open'].astype(float))*100
+		df['PCT_close'] = ((df['close'].astype(float) - df['open'].astype(float)) / df['close'].astype(float))*100
 		if time == True:
 			return df[['time','PCT_close']]
 		return df[['PCT_close']]
+
+	def Range(self, look_forward):
+		import numpy as np
+		df = self.df
+		df_list = []
+		for x in range(self.df.shape[0]-look_forward):	
+			section = ((df.loc[x+look_forward].astype(float) - df.loc[x].astype(float)) / df.loc[x+look_forward].astype(float))*100
+			df_list.append(section.tolist())
+		return np.array(df_list)
+
 	def SMA(self, ma_list):
 		df = self.df
 		df = Indicators(df).SMA(ma_list)
 		for x in ma_list:
-			df['PCT_SMA_{}'.format(x)] = ((df['SMA_{}'.format(x)].astype(float) - df['close'].astype(float)) / df['SMA_{}'.format(x)].astype(float))*100
+			df['PCT_SMA_{}'.format(x)] = ((df['close'].astype(float) - df['SMA_{}'.format(x)].astype(float)) / df['close'].astype(float))*100
 			df = df.drop(columns=['SMA_{}'.format(x)])
 		return df
 
@@ -215,20 +233,71 @@ class Train:
 	def __init__(self, instrument, granularity, candleCount, timeSeries, look_forward):
 		self.instrument = instrument
 		self.granularity = granularity
+		self.candleCount = candleCount
 		self.look_forward = look_forward
-		data = Data(instrument, granularity, candleCount).OHLC()
+
+	def X_Train(self): 
+		data = None
+		while data is None:
+			try:
+				data = Data(self.instrument, self.granularity, self.candleCount).OHLC()
+			except:
+				print('x_train Oanda Error')
+				time.sleep(10)
 		df = Train_Data(data).Main(ma_list)
 		df = Time_Series(df, timeSeries).Section()
 		self.df = df
+		df = df[:-self.look_forward]
+		x_train = Scale(df).Min_Max()
+		print('x_train Done Loading')
+		return x_train
 
-	def X_Train(self):
-		return self.df[:-look_forward]
+	def Y_Train_PCT(self): # Range Percent
+		data = None
+		while data is None:
+			try:
+				data = Data(self.instrument, self.granularity, self.df.shape[0]).Close()
+			except:
+				print('y_train Oanda Error')
+				time.sleep(10)
+		y_train = Percent(data).Range(self.look_forward)
+		print('y_train Done Loading')
+		return y_train
 
-	def Y_Train(self):
-		import numpy as np
-		data = Data(instrument, granularity, self.df.shape[0]).Close()
-		data = data[look_forward:]
-		return data
+
+class Scale:
+	def __init__(self, x_train):
+		self.x_train = x_train
+
+	def Min_Max(self):
+		from sklearn.preprocessing import MinMaxScaler
+		x_train = self.x_train
+		x_train_shape = x_train.shape
+		scaler = MinMaxScaler(feature_range=(0,1))
+		x_train = scaler.fit_transform((x_train.astype(float)).reshape(x_train_shape[0]*x_train_shape[1],x_train_shape[2]))
+		x_train = x_train.reshape(x_train_shape)
+		return x_train
+
+
+class Model:
+	def __init__(self, x_train, y_train, batch_size=10, epochs=10):
+		self.x_train = x_train
+		self.y_train = y_train
+
+		self.batch_size = batch_size
+		self.epochs = epochs
+		self.x_train_shape = x_train.shape
+
+	def LSTM_One(self):
+		model = Sequential()
+		model.add(LSTM(8, return_sequences=True, input_shape=(self.x_train_shape[1], self.x_train_shape[2])))
+		model.add(Dropout(0.2))
+		model.add(LSTM(4))
+		model.add(Dense(1, activation="linear"))
+		model.compile(loss='mean_squared_error', optimizer='adam')
+		history = model.fit(self.x_train, self.y_train, batch_size=self.batch_size, epochs=self.epochs, validation_split=0.3, verbose=2)
+		# model.save('Models/'+main_pair[x]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM_One.h5')
+		print(main_pair[x], 'Model Saved')
 
 
 if __name__ == '__main__':
@@ -238,8 +307,13 @@ if __name__ == '__main__':
 	timeSeries = 240
 	look_forward = 10
 	ma_list = [5,10,20,50,100,200,250]
+	batch_size = 10
+	epochs = 20
 
 	train = Train(instrument, granularity, candleCount, timeSeries, look_forward)
 	x_train = train.X_Train()
-	y_train = train.Y_Train()
-	print(x_train.shape,y_train.shape)
+	y_train = train.Y_Train_PCT()
+	exit()
+	# Model
+	Model(x_train, y_train, batch_size=batch_size, epochs=epochs).LSTM_One()
+
