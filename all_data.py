@@ -4,6 +4,8 @@ from keras.models import Sequential
 from keras.layers.core import Dense
 from keras.layers import LSTM
 from keras.layers import Dropout
+from keras.layers import SpatialDropout1D
+from keras.layers import Bidirectional
 from keras.optimizers import Adam
 # Data
 import configparser
@@ -122,7 +124,7 @@ class Data:
 		return df[['close']]
 
 
-class Percent:
+class Percent: # Percentage candle data, for Train_Data()
 	def __init__(self, df):
 		self.df = df
 
@@ -189,7 +191,7 @@ class Feature:
 
 	def Bins(self, bins, labels=False):
 		df = self.df
-		return pd.cut(df, bins, labels=labels, right=False)
+		return pd.qcut(df, bins, labels=labels)
 
 
 class Time_Series:
@@ -213,11 +215,11 @@ class Time_Series:
 		pass
 
 
-class Train_Data:
+class Train_Data: # Create data to be applied to Train()
 	def __init__(self, df):
 		self.data = df
 
-	def Main(self, ma_list):
+	def SMA(self, ma_list):
 		df = Percent(self.data).SMA(ma_list)
 		df['PCT_close'] = Percent(df).Close()
 		df['bin_PCT_close'] = Feature(df['PCT_close']).Bins(101)
@@ -228,15 +230,22 @@ class Train_Data:
 		df = df.drop(columns=['open','high','low','close','PCT_close'])
 		return df
 
+	def SMA2(self, ma_list):
+		df = Percent(self.data).SMA(ma_list)
+		df['PCT_close'] = Percent(df).Close()
+		df = Feature(df).Clean()
+		df = df.drop(columns=['open','high','low','close'])
+		return df
 
-class Train:
-	def __init__(self, instrument, granularity, candleCount, timeSeries, look_forward):
+
+class Train: # Create a new set of training data
+	def __init__(self, instrument, granularity, candleCount, time_series, look_forward):
 		self.instrument = instrument
 		self.granularity = granularity
 		self.candleCount = candleCount
 		self.look_forward = look_forward
 
-	def X_Train(self): 
+	def X_Train_SMA(self, ma_list): # no loss gain
 		data = None
 		while data is None:
 			try:
@@ -244,8 +253,8 @@ class Train:
 			except:
 				print('x_train Oanda Error')
 				time.sleep(10)
-		df = Train_Data(data).Main(ma_list)
-		df = Time_Series(df, timeSeries).Section()
+		df = Train_Data(data).SMA2(ma_list)
+		df = Time_Series(df, time_series).Section()
 		self.df = df
 		df = df[:-self.look_forward]
 		x_train = Scale(df).Min_Max()
@@ -264,6 +273,39 @@ class Train:
 		print('y_train Done Loading')
 		return y_train
 
+	def X_Train_SMA_2(self, ma_list): # Not Done
+		data = None
+		while data is None:
+			try:
+				data = Data(self.instrument, self.granularity, self.candleCount).OHLC()
+			except:
+				print('x_train Oanda Error')
+				time.sleep(10)
+		df = Train_Data(data).SMA2(ma_list)
+		df_2 = df.pow(2)
+		df =  pd.concat([df,df_2], axis=1)
+		df = Time_Series(df, time_series).Section()
+		self.df = df
+		df = df[:-self.look_forward]
+		x_train = Scale(df).Min_Max()
+		print('x_train Done Loading')
+		return x_train
+
+	def Y_Train_PCT_Bin(self): # Range Percent
+		data = None
+		while data is None:
+			try:
+				data = Data(self.instrument, self.granularity, self.df.shape[0]).Close()
+			except:
+				print('y_train Oanda Error')
+				time.sleep(10)
+		y_train = Percent(data).Range(self.look_forward)
+		y_train = y_train.reshape(y_train.shape[0],)
+		y_train = Feature(y_train).Bins(41)
+		y_train = y_train.reshape(y_train.shape[0],1)
+		print('y_train Done Loading')
+		return y_train
+
 
 class Scale:
 	def __init__(self, x_train):
@@ -273,47 +315,83 @@ class Scale:
 		from sklearn.preprocessing import MinMaxScaler
 		x_train = self.x_train
 		x_train_shape = x_train.shape
-		scaler = MinMaxScaler(feature_range=(0,1))
+		scaler = MinMaxScaler(feature_range=(-1,1))
 		x_train = scaler.fit_transform((x_train.astype(float)).reshape(x_train_shape[0]*x_train_shape[1],x_train_shape[2]))
 		x_train = x_train.reshape(x_train_shape)
 		return x_train
 
 
 class Model:
-	def __init__(self, x_train, y_train, batch_size=10, epochs=10):
+	def __init__(self, x_train, y_train, instrument, granularity, time_series, look_forward, batch_size=10, epochs=10):
 		self.x_train = x_train
 		self.y_train = y_train
 
+		self.instrument = instrument
+		self.granularity = granularity
+		self.time_series = time_series
+		self.look_forward = look_forward
 		self.batch_size = batch_size
 		self.epochs = epochs
 		self.x_train_shape = x_train.shape
 
+	def Predict(self):
+		from keras.models import load_model
+		data = self.x_train[-1]
+		data = data.reshape(1,data.shape[0],data.shape[1])
+		model = load_model('Models/'+self.instrument+'/'+self.granularity+'/'+str(self.time_series)+'_'+str(self.look_forward)+'_LSTM_One.h5')
+		prediction = model.predict(data)
+		print(self.instrument+":", prediction)
+
 	def LSTM_One(self):
 		model = Sequential()
-		model.add(LSTM(8, return_sequences=True, input_shape=(self.x_train_shape[1], self.x_train_shape[2])))
-		model.add(Dropout(0.2))
-		model.add(LSTM(4))
-		model.add(Dense(1, activation="linear"))
-		model.compile(loss='mean_squared_error', optimizer='adam')
+		model.add(LSTM(32, return_sequences=True, input_shape=(self.x_train_shape[1], self.x_train_shape[2])))
+		model.add(SpatialDropout1D(0.2))
+		model.add(LSTM(16, return_sequences=True))
+		model.add(SpatialDropout1D(0.2))
+		model.add(LSTM(8))
+		model.add(Dense(1, activation="sigmoid"))
+		optimizer = Adam(lr=0.01)
+		model.compile(loss='mean_squared_error', optimizer=optimizer)
 		history = model.fit(self.x_train, self.y_train, batch_size=self.batch_size, epochs=self.epochs, validation_split=0.3, verbose=2)
-		# model.save('Models/'+main_pair[x]+'_'+granularity+'_time_series_'+str(time_series)+'_'+str(look_forward)+'_LSTM_One.h5')
-		print(main_pair[x], 'Model Saved')
+		model.save('Models/'+self.instrument+'/'+self.granularity+'/'+str(self.time_series)+'_'+str(self.look_forward)+'_LSTM_One.h5')
+		print('Model Saved')
+		return history
 
+
+class Plot:
+	def __init__(self, history, instrument):
+		self.history = history
+		self.instrument = instrument
+
+	def Plot(self):
+		import matplotlib.pyplot as plt
+		history = self.history
+		plt.plot(history.history['loss'])
+		plt.plot(history.history['val_loss'])
+		plt.title(self.instrument+' model train vs validation loss')
+		plt.ylabel('loss')
+		plt.xlabel('epoch')
+		plt.legend(['train', 'validation'], loc='upper right')
+		plt.show()
+		
 
 if __name__ == '__main__':
 	instrument = 'EUR_USD'
 	granularity = 'H1'
 	candleCount = 4800
-	timeSeries = 240
-	look_forward = 10
+	time_series = 120
+	look_forward = 24
 	ma_list = [5,10,20,50,100,200,250]
-	batch_size = 10
-	epochs = 20
+	batch_size = 100
+	epochs = 100
 
-	train = Train(instrument, granularity, candleCount, timeSeries, look_forward)
-	x_train = train.X_Train()
+	train = Train(instrument, granularity, candleCount, time_series, look_forward)
+	x_train = train.X_Train_SMA_2(ma_list)
 	y_train = train.Y_Train_PCT()
-	exit()
-	# Model
-	Model(x_train, y_train, batch_size=batch_size, epochs=epochs).LSTM_One()
+	print(x_train.shape)
+	print(y_train.shape)
 
+	# Model
+	history = Model(x_train, y_train, instrument, granularity, time_series, look_forward, batch_size=batch_size, epochs=epochs).LSTM_One()
+	Plot(history, instrument).Plot()
+	predict = Model(x_train, y_train, instrument, granularity, time_series, look_forward, batch_size=batch_size, epochs=epochs).Predict()
