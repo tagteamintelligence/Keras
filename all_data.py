@@ -345,11 +345,11 @@ class Model:
 	def LSTM_One(self):
 		model = Sequential()
 		model.add(LSTM(32, return_sequences=True, input_shape=(self.x_train_shape[1], self.x_train_shape[2])))
-		model.add(SpatialDropout1D(0.2))
+		model.add(SpatialDropout1D(0.4))
 		model.add(LSTM(16, return_sequences=True))
-		model.add(SpatialDropout1D(0.2))
+		model.add(SpatialDropout1D(0.4))
 		model.add(LSTM(8))
-		model.add(Dense(1, activation="sigmoid"))
+		model.add(Dense(1, activation="linear"))
 		optimizer = Adam(lr=0.01)
 		model.compile(loss='mean_squared_error', optimizer=optimizer)
 		history = model.fit(self.x_train, self.y_train, batch_size=self.batch_size, epochs=self.epochs, validation_split=0.3, verbose=2)
@@ -379,11 +379,11 @@ if __name__ == '__main__':
 	instrument = 'EUR_USD'
 	granularity = 'H1'
 	candleCount = 4800
-	time_series = 120
+	time_series = 240
 	look_forward = 24
 	ma_list = [5,10,20,50,100,200,250]
-	batch_size = 100
-	epochs = 100
+	batch_size = 20
+	epochs = 1000
 
 	train = Train(instrument, granularity, candleCount, time_series, look_forward)
 	x_train = train.X_Train_SMA_2(ma_list)
